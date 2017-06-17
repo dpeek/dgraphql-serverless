@@ -1,0 +1,89 @@
+service: dgraphql-serverless
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  region: eu-west-2
+  vpc:
+    securityGroupIds:
+      - Fn::GetAtt:
+        - DgraphSecurityGroup
+        - GroupId
+    # TODO: get default subnets or create instead?
+    subnetIds:
+      - subnet-d13f139b
+      - subnet-fb848883
+
+plugins:
+  - serverless-webpack
+
+functions:
+  graphql:
+    handler: handler.graphql
+    environment:
+      DGRAPH:
+        Fn::GetAtt:
+          - DgraphInstance
+          - PrivateIp
+    events:
+      - http:
+          path: /
+          method: post
+          cors: true
+          integration: lambda-proxy
+      - http:
+          path: /
+          method: get
+          cors: true
+          integration: lambda-proxy
+
+resources:
+  Resources:
+    DgraphSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Lock down Dgraph
+    DgraphIngress:
+      Type: AWS::EC2::SecurityGroupIngress
+      Properties:
+        GroupName:
+          Ref: DgraphSecurityGroup
+        IpProtocol: tcp
+        ToPort: 8080
+        FromPort: 8080
+        SourceSecurityGroupName:
+          Ref: DgraphSecurityGroup
+    DgraphInstance:
+      Type: AWS::EC2::Instance
+      Properties:
+        InstanceType: t2.medium
+        # TODO: need to map AMI to region
+        ImageId: ami-f1d7c395
+        SecurityGroups:
+          - Ref: DgraphSecurityGroup
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+
+            # install dgraph
+            sudo apt-get update -y
+            sudo apt-get install -y gcc
+            curl https://get.dgraph.io -sSf | bash
+
+            # create dgraph.service
+            sudo bash -c 'cat << EOF > /etc/systemd/system/dgraph.service
+            [Unit]
+            Description=dgraph
+
+            [Service]
+            ExecStart=/usr/local/bin/dgraph -w /home/ubuntu/dgraph/w -p /home/ubuntu/dgraph/p -bindall
+            Restart=always
+            User=ubuntu
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF'
+
+            # enable and start dgraph service
+            sudo systemctl enable dgraph.service
+            sudo systemctl start dgraph.service
