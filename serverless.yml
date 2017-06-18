@@ -9,10 +9,9 @@ provider:
       - Fn::GetAtt:
         - DgraphSecurityGroup
         - GroupId
-    # TODO: get default subnets or create instead?
     subnetIds:
-      - subnet-d13f139b
       - subnet-fb848883
+      - subnet-d13f139b
 
 plugins:
   - serverless-webpack
@@ -38,6 +37,36 @@ functions:
           integration: lambda-proxy
 
 resources:
+  Mappings:
+    RegionMap:
+      us-east-2:
+        "64": "ami-618fab04"
+      us-east-1:
+        "64": "ami-80861296"
+      us-west-1:
+        "64": "ami-2afbde4a"
+      us-west-2:
+        "64": "ami-efd0428f"
+      ca-central-1:
+        "64": "ami-b3d965d7"
+      ap-south-1:
+        "64": "ami-c2ee9dad"
+      ap-northeast-2:
+        "64": "ami-66e33108"
+      ap-southeast-1:
+        "64": "ami-8fcc75ec"
+      ap-southeast-2:
+        "64": "ami-96666ff5"
+      ap-northeast-1:
+        "64": "ami-afb09dc8"
+      eu-central-1:
+        "64": "ami-060cde69"
+      eu-west-1:
+        "64": "ami-a8d2d7ce"
+      eu-west-2:
+        "64": "ami-f1d7c395"
+      sa-east-1:
+        "64": "ami-4090f22c"
   Resources:
     DgraphSecurityGroup:
       Type: AWS::EC2::SecurityGroup
@@ -57,8 +86,11 @@ resources:
       Type: AWS::EC2::Instance
       Properties:
         InstanceType: t2.medium
-        # TODO: need to map AMI to region
-        ImageId: ami-f1d7c395
+        ImageId:
+          Fn::FindInMap:
+            - RegionMap
+            - Ref: AWS::Region
+            - 64
         SecurityGroups:
           - Ref: DgraphSecurityGroup
         UserData:
