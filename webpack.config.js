@@ -12,6 +12,10 @@ module.exports = {
       {
         test: /\.json/,
         loaders: ['json-loader']
+      },
+      {
+        test: /\.graphql/,
+        loaders: ['string-loader']
       }
     ]
   }

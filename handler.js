@@ -1,14 +1,18 @@
-import { graphql } from 'graphql'
+// @flow
+
 import { Client } from 'dgraphql'
 
-const schema = `
-type Person {
-  id: ID!
-  name: String @index(type: "exact")
-}
-`
+import schema from './schema.graphql'
 
-const DGRAPH = process.env.DGRAPH
+import { getResponder } from './responder'
+
+import type {
+  LambdaAPIGatewayProxyEvent,
+  LambdaContext,
+  LambdaAPIGatewayCallback
+} from './lambda'
+
+const DGRAPH = String(process.env.DGRAPH)
 
 const client = new Client({
   server: `http://${DGRAPH}:8080/query`,
@@ -17,33 +21,26 @@ const client = new Client({
   debug: true
 })
 
-const handle = (source, variables) => {
-  return graphql({
+const responder = getResponder((event, context) => {
+  return {
     schema: client.schema,
-    source: source,
-    contextValue: client.getContext(),
-    variableValues: {}
-  })
-}
-
-const createResponse = (statusCode, body) => ({
-  statusCode,
-  headers: {
-    'Access-Control-Allow-Origin': '*'
-  },
-  body: JSON.stringify(body)
+    context: client.getContext('en'), // TODO: accepts language header
+    graphiql: true
+  }
 })
 
-module.exports.graphql = (event, context, callback) => {
-  const body = JSON.parse(event.body)
-  handle(body.query, body.variables)
-    .then(response => callback(null, createResponse(200, response)))
-    .catch(error =>
-      callback(
-        null,
-        createResponse(error.responseStatusCode || 500, {
-          message: error.message || 'Internal server error'
-        })
-      )
-    )
+module.exports.graphql = (
+  event: LambdaAPIGatewayProxyEvent,
+  context: LambdaContext,
+  callback: LambdaAPIGatewayCallback
+) => {
+  return responder(event, context)
+    .then(response => {
+      console.log('response', response)
+      callback(null, response)
+    })
+    .catch(error => {
+      console.log('error', error)
+      callback(error)
+    })
 }
