@@ -1,4 +1,5 @@
 type Person {
   id: ID!
-  name: String @order @filter(types: [EQUALITY])
+  name: String @order @filter(types: [EQUALITY, TERM])
+  friends: [Person!]!
 }
