@@ -1,6 +1,12 @@
+const webpack = require('webpack')
+
 module.exports = {
-  entry: ['babel-polyfill', './handler.js'],
+  entry: ['babel-polyfill', './src/handler.js'],
   target: 'node',
+  plugins: [
+    new webpack.optimize.ModuleConcatenationPlugin(),
+    new webpack.optimize.UglifyJsPlugin()
+  ],
   module: {
     loaders: [
       {

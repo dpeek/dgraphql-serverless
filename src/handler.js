@@ -22,9 +22,10 @@ const client = new Client({
 })
 
 const responder = getResponder((event, context) => {
+  const language = event.headers['Accept-Language'].split('-')[0]
   return {
     schema: client.schema,
-    context: client.getContext('en'), // TODO: accepts language header
+    context: client.getContext(language),
     graphiql: true
   }
 })
